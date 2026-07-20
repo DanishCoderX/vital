@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Vital",
+    "slug": "vital-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "vital-tracker",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2E9CCA",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.danishcoderx.vitaltracker"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "Vital — Fitness & Hydration Tracker",
+      "shortName": "Vital",
+      "themeColor": "#2E9CCA",
+      "backgroundColor": "#F4F7F7",
+      "display": "standalone",
+      "lang": "en"
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-sensors"
+    ],
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#2E9CCA"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "67dc03a0-4bbd-49b6-8541-431e3e417a63"
+      }
+    },
+    "owner": "daanicoder"
+  }
+}

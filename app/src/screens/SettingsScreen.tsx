@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Platform, View, Text, StyleSheet, TouchableOpacity, TextInput, Switch, Alert } from "react-native";
+import { Platform, View, Text, StyleSheet, TouchableOpacity, TextInput, Switch } from "react-native";
 import ScreenContainer from "../components/ScreenContainer";
 import Card from "../components/Card";
 import SummaryCard from "../components/SummaryCard";
@@ -9,6 +9,7 @@ import { exportCsv, pickAndParseCsv } from "../lib/csv";
 import { requestNotificationPermission, scheduleHydrationReminders, cancelAllReminders } from "../lib/notifications";
 import { shareSummaryCard } from "../lib/shareSummary";
 import { useAuth } from "../lib/AuthContext";
+import { showAlert, showConfirm } from "../lib/platformAlert";
 
 export default function SettingsScreen() {
   const { user, logout, deleteAccount } = useAuth();
@@ -48,7 +49,7 @@ export default function SettingsScreen() {
     if (value) {
       const granted = await requestNotificationPermission();
       if (!granted) {
-        Alert.alert("Permission needed", "Enable notifications in your device settings to use reminders.");
+        showAlert("Permission needed", "Enable notifications in your device settings to use reminders.");
         return;
       }
       await scheduleHydrationReminders(data!.settings.reminders.times);
@@ -62,7 +63,7 @@ export default function SettingsScreen() {
   async function handleAddTime() {
     const trimmed = newTime.trim();
     if (!/^\d{1,2}:\d{2}$/.test(trimmed)) {
-      Alert.alert("Invalid time", "Use 24-hour HH:MM format, e.g. 14:30");
+      showAlert("Invalid time", "Use 24-hour HH:MM format, e.g. 14:30");
       return;
     }
     const times = [...data!.settings.reminders.times, trimmed].sort();
@@ -93,31 +94,27 @@ export default function SettingsScreen() {
     if (!sections) return;
     const next = await mergeImportedCsv(data!, sections);
     refresh(next);
-    Alert.alert("Import complete", "Your data has been merged in.");
+    showAlert("Import complete", "Your data has been merged in.");
   }
 
   async function handleShareSummary() {
     await shareSummaryCard(summaryRef);
   }
 
-  async function handleDeleteAccount() {
-    Alert.alert(
+  async function performDelete() {
+    try {
+      await deleteAccount();
+    } catch {
+      showAlert("Something went wrong", "Couldn't delete your account. Please check your connection and try again.");
+    }
+  }
+
+  function handleDeleteAccount() {
+    showConfirm(
       "Delete account?",
       "This permanently deletes your account and everything synced to it — workouts, hydration history, steps, weight, everything. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Everything",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteAccount();
-            } catch {
-              Alert.alert("Something went wrong", "Couldn't delete your account. Please check your connection and try again.");
-            }
-          },
-        },
-      ]
+      "Delete Everything",
+      performDelete
     );
   }
 

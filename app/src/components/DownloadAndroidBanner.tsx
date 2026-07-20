@@ -2,12 +2,9 @@ import { useState } from "react";
 import { Platform, View, Text, TouchableOpacity, StyleSheet, Linking } from "react-native";
 import { useAppContext } from "../lib/AppContext";
 
-// Fill this in once your EAS build finishes — see the "eas build" instructions in README.md.
-// It should point to a permanently-hosted .apk file (e.g. uploaded to a GitHub Release),
-// not the temporary expo.dev build artifact URL, which expires.
-export const ANDROID_APK_URL = "";
+export const ANDROID_APK_URL = "https://github.com/DanishCoderX/vital/releases/download/v1.0.0/vital.apk";
 
-export default function DownloadAndroidBanner() {
+export default function DownloadAndroidBanner() { 
   const { theme } = useAppContext();
   const [dismissed, setDismissed] = useState(false);
 
@@ -20,7 +17,7 @@ export default function DownloadAndroidBanner() {
       </Text>
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => Linking.openURL(ANDROID_APK_URL)} style={[styles.downloadButton, { backgroundColor: theme.aqua }]}>
-          <Text style={styles.downloadText}>Download for Android</Text>
+          <Text style={styles.downloadText}>Download for Android/IOS</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setDismissed(true)}>
           <Text style={[styles.dismiss, { color: theme.inkSoft }]}>✕</Text>

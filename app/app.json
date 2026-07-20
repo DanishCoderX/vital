@@ -31,13 +31,15 @@
       "lang": "en"
     },
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#2E9CCA"
+        }
+      ],
       "expo-sensors"
     ],
-    "notification": {
-      "icon": "./assets/icon.png",
-      "color": "#2E9CCA"
-    },
     "extra": {
       "eas": {
         "projectId": "67dc03a0-4bbd-49b6-8541-431e3e417a63"

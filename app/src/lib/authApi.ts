@@ -63,3 +63,27 @@ export function deleteAccount(token: string): Promise<{ success: boolean }> {
     headers: { Authorization: `Bearer ${token}` },
   }).then(json<{ success: boolean }>);
 }
+
+export function forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+  return fetch(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  }).then(json<{ success: boolean; message: string }>);
+}
+
+export function resetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
+  return fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code, newPassword }),
+  }).then(json<AuthResponse>);
+}
+
+export function changePassword(token: string, currentPassword: string, newPassword: string): Promise<{ success: boolean }> {
+  return fetch(`${API_BASE}/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  }).then(json<{ success: boolean }>);
+}

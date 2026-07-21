@@ -21,6 +21,9 @@ interface AuthContextValue {
   loginWithGoogleIdToken: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPasswordWithCode: (email: string, code: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -160,9 +163,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOffline(false);
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    setError(null);
+    try {
+      await authApi.forgotPassword(email);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to request password reset");
+      throw err;
+    }
+  }, []);
+
+  const resetPasswordWithCode = useCallback(async (email: string, code: string, newPassword: string) => {
+    setError(null);
+    try {
+      const { token, user: resetUser } = await authApi.resetPassword(email, code, newPassword);
+      await setStoredToken(token);
+      await reconcileDataAfterAuth(token);
+      await setCachedUser(resetUser);
+      setUser(resetUser);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset password");
+      throw err;
+    }
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    setError(null);
+    const token = await getStoredToken();
+    if (!token) throw new Error("Not logged in");
+    try {
+      await authApi.changePassword(token, currentPassword, newPassword);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to change password");
+      throw err;
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, offline, signup, login, loginWithGoogleIdToken, logout, deleteAccount }}
+      value={{
+        user,
+        loading,
+        error,
+        offline,
+        signup,
+        login,
+        loginWithGoogleIdToken,
+        logout,
+        deleteAccount,
+        requestPasswordReset,
+        resetPasswordWithCode,
+        changePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

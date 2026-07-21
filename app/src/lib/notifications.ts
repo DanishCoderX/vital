@@ -14,14 +14,26 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export async function requestNotificationPermission(): Promise<boolean> {
+export interface NotificationPermissionResult {
+  granted: boolean;
+  canAskAgain: boolean;
+}
+
+export async function requestNotificationPermission(): Promise<NotificationPermissionResult> {
   if (Platform.OS === "web") {
-    if (typeof Notification === "undefined") return false;
+    if (typeof Notification === "undefined") return { granted: false, canAskAgain: false };
     const result = await Notification.requestPermission();
-    return result === "granted";
+    return { granted: result === "granted", canAskAgain: result !== "denied" };
   }
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === "granted";
+
+  // Check current status first — requesting again after a permanent denial won't
+  // re-prompt on Android, so we need to tell the difference to give the right message.
+  const current = await Notifications.getPermissionsAsync();
+  if (current.status === "granted") return { granted: true, canAskAgain: true };
+  if (!current.canAskAgain) return { granted: false, canAskAgain: false };
+
+  const requested = await Notifications.requestPermissionsAsync();
+  return { granted: requested.status === "granted", canAskAgain: requested.canAskAgain };
 }
 
 /** Registers the "+250ml" quick-action button on the notification itself (native only). */

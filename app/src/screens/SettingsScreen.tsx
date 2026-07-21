@@ -12,11 +12,14 @@ import { useAuth } from "../lib/AuthContext";
 import { showAlert, showConfirm } from "../lib/platformAlert";
 
 export default function SettingsScreen() {
-  const { user, logout, deleteAccount } = useAuth();
+  const { user, logout, deleteAccount, changePassword } = useAuth();
   const { data, theme, refresh } = useAppContext();
   const [goalInput, setGoalInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [newTime, setNewTime] = useState("");
+  const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const summaryRef = useRef<View>(null);
 
   if (!data) return null;
@@ -47,10 +50,17 @@ export default function SettingsScreen() {
 
   async function handleToggleReminders(value: boolean) {
     if (value) {
-      const granted = await requestNotificationPermission();
+      const { granted, canAskAgain } = await requestNotificationPermission();
       if (!granted) {
-        showAlert("Permission needed", "Enable notifications in your device settings to use reminders.");
-        return;
+        if (!canAskAgain) {
+          showAlert(
+            "Notifications blocked",
+            "You've previously denied notification permission. Enable it manually in your device's Settings → Apps → Vital → Notifications, then try the switch again."
+          );
+        } else {
+          showAlert("Permission needed", "Notifications permission is required to use reminders.");
+        }
+        return; // leave the switch off — don't update settings.enabled since it never actually turned on
       }
       await scheduleHydrationReminders(data!.settings.reminders.times);
     } else {
@@ -118,6 +128,21 @@ export default function SettingsScreen() {
     );
   }
 
+  async function handleChangePassword() {
+    if (currentPasswordInput.length === 0 || newPasswordInput.length < 8) return;
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPasswordInput, newPasswordInput);
+      setCurrentPasswordInput("");
+      setNewPasswordInput("");
+      showAlert("Password changed", "Your password has been updated.");
+    } catch {
+      showAlert("Couldn't change password", "Check your current password and try again.");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   const weight = latestWeightKg(data);
 
   return (
@@ -134,6 +159,36 @@ export default function SettingsScreen() {
         >
           <Text style={[styles.buttonText, { color: theme.danger }]}>Delete Account</Text>
         </TouchableOpacity>
+      </Card>
+
+      <Card>
+        <Text style={[styles.sectionTitle, { color: theme.ink }]}>Change password</Text>
+        <TextInput
+          value={currentPasswordInput}
+          onChangeText={setCurrentPasswordInput}
+          placeholder="Current password"
+          placeholderTextColor={theme.inkSoft}
+          secureTextEntry
+          style={[styles.input, { borderColor: theme.hairline, color: theme.ink, marginBottom: 10 }]}
+        />
+        <TextInput
+          value={newPasswordInput}
+          onChangeText={setNewPasswordInput}
+          placeholder="New password (min. 8 characters)"
+          placeholderTextColor={theme.inkSoft}
+          secureTextEntry
+          style={[styles.input, { borderColor: theme.hairline, color: theme.ink, marginBottom: 10 }]}
+        />
+        <TouchableOpacity
+          onPress={handleChangePassword}
+          disabled={changingPassword || !currentPasswordInput || newPasswordInput.length < 8}
+          style={[styles.fullButton, { backgroundColor: theme.aqua, opacity: changingPassword ? 0.7 : 1 }]}
+        >
+          <Text style={styles.buttonText}>Update Password</Text>
+        </TouchableOpacity>
+        <Text style={[styles.note, { color: theme.inkSoft }]}>
+          If you signed up with Google, this won't apply — there's no password to change.
+        </Text>
       </Card>
 
       <Card>

@@ -16,6 +16,17 @@ export async function isStepSensorAvailable(): Promise<boolean> {
   }
 }
 
+/** Requests the Activity Recognition permission required for step counting on Android. */
+export async function requestStepSensorPermission(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  try {
+    const { status } = await Pedometer.requestPermissionsAsync();
+    return status === "granted";
+  } catch {
+    return false;
+  }
+}
+
 /** Reads today's step count so far from the device's motion sensor (native only). */
 export async function readTodayStepsFromSensor(): Promise<StepSensorResult> {
   if (Platform.OS === "web") return { available: false, steps: 0 };
@@ -23,6 +34,9 @@ export async function readTodayStepsFromSensor(): Promise<StepSensorResult> {
   try {
     const available = await Pedometer.isAvailableAsync();
     if (!available) return { available: false, steps: 0 };
+
+    const granted = await requestStepSensorPermission();
+    if (!granted) return { available: false, steps: 0 };
 
     const end = new Date();
     const start = new Date();

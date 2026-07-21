@@ -5,6 +5,7 @@ import { useAuth } from "../lib/AuthContext";
 import { lightTheme } from "../theme";
 import LoginScreen from "../screens/LoginScreen";
 import SignupScreen from "../screens/SignupScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import { AppProvider, useAppContext } from "../lib/AppContext";
 import RootNavigator from "./RootNavigator";
 import DownloadAndroidBanner from "../components/DownloadAndroidBanner";
@@ -55,7 +56,7 @@ function NotificationBridge() {
 
 export default function AuthGate() {
   const { user, loading, offline } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot-password">("signup");
 
   if (loading) {
     return (
@@ -66,11 +67,9 @@ export default function AuthGate() {
   }
 
   if (!user) {
-    return mode === "signup" ? (
-      <SignupScreen onSwitchToLogin={() => setMode("login")} />
-    ) : (
-      <LoginScreen onSwitchToSignup={() => setMode("signup")} />
-    );
+    if (mode === "signup") return <SignupScreen onSwitchToLogin={() => setMode("login")} />;
+    if (mode === "forgot-password") return <ForgotPasswordScreen onSwitchToLogin={() => setMode("login")} />;
+    return <LoginScreen onSwitchToSignup={() => setMode("signup")} onSwitchToForgotPassword={() => setMode("forgot-password")} />;
   }
 
   return (

@@ -1,11 +1,14 @@
 const express = require("express");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { requireAuth, signToken } = require("../middleware/auth");
+const { sendResetCodeEmail } = require("../services/emailService");
 
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const RESET_CODE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 function publicUser(user) {
   return { id: user._id, email: user.email, name: user.name, appData: user.appData };
@@ -114,6 +117,100 @@ router.delete("/me", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("[auth] account deletion failed:", err.message);
     res.status(500).json({ error: "Failed to delete account" });
+  }
+});
+
+// ---------- Forgot password: request a reset code ----------
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: "email is required" });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    // Always respond the same way whether or not the account exists — otherwise this
+    // endpoint could be used to check which emails are registered.
+    if (user && user.passwordHash) {
+      const code = String(crypto.randomInt(100000, 999999)); // 6-digit code
+      user.resetCodeHash = await bcrypt.hash(code, 10);
+      user.resetCodeExpires = new Date(Date.now() + RESET_CODE_TTL_MS);
+      await user.save();
+      await sendResetCodeEmail(user.email, code).catch((err) => {
+        console.error("[auth] failed to send reset email:", err.message);
+      });
+    }
+
+    res.json({ success: true, message: "If that email has an account, a reset code has been sent." });
+  } catch (err) {
+    console.error("[auth] forgot-password failed:", err.message);
+    res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// ---------- Reset password using the emailed code ----------
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body || {};
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: "email, code, and newPassword are required" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user || !user.resetCodeHash || !user.resetCodeExpires) {
+      return res.status(400).json({ error: "Invalid or expired code" });
+    }
+    if (user.resetCodeExpires.getTime() < Date.now()) {
+      return res.status(400).json({ error: "This code has expired. Request a new one." });
+    }
+
+    const validCode = await bcrypt.compare(code, user.resetCodeHash);
+    if (!validCode) {
+      return res.status(400).json({ error: "Invalid or expired code" });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.resetCodeHash = undefined;
+    user.resetCodeExpires = undefined;
+    await user.save();
+
+    const token = signToken(user._id.toString());
+    res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    console.error("[auth] reset-password failed:", err.message);
+    res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// ---------- Change password (while logged in) ----------
+router.post("/change-password", requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "currentPassword and newPassword are required" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "New password must be at least 8 characters" });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user || !user.passwordHash) {
+      return res.status(400).json({ error: "This account doesn't use a password (signed up with Google)" });
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[auth] change-password failed:", err.message);
+    res.status(500).json({ error: "Something went wrong. Please try again." });
   }
 });
 

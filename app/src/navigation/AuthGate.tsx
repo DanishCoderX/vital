@@ -68,31 +68,31 @@ export default function AuthGate() {
     );
   }
 
-  if (!user) {
-    return (
-      <>
-        <DownloadAndroidBanner />
-        {mode === "signup" && <SignupScreen onSwitchToLogin={() => setMode("login")} />}
-        {mode === "forgot-password" && <ForgotPasswordScreen onSwitchToLogin={() => setMode("login")} />}
-        {mode === "login" && (
-          <LoginScreen onSwitchToSignup={() => setMode("signup")} onSwitchToForgotPassword={() => setMode("forgot-password")} />
-        )}
-      </>
-    );
-  }
-
   return (
     <AppProvider>
-      <NotificationBridge />
-      {offline && (
-        <View style={{ backgroundColor: "#D9A441", paddingTop: insets.top + 6, paddingBottom: 6, alignItems: "center" }}>
-          <Text style={{ color: "#1F2A2E", fontSize: 12, fontWeight: "600" }}>
-            Offline — showing your last synced data
-          </Text>
-        </View>
+      {user ? (
+        <>
+          <NotificationBridge />
+          {offline && (
+            <View style={{ backgroundColor: "#D9A441", paddingTop: insets.top + 6, paddingBottom: 6, alignItems: "center" }}>
+              <Text style={{ color: "#1F2A2E", fontSize: 12, fontWeight: "600" }}>
+                Offline — showing your last synced data
+              </Text>
+            </View>
+          )}
+          <DownloadAndroidBanner />
+          <RootNavigator />
+        </>
+      ) : (
+        <>
+          <DownloadAndroidBanner />
+          {mode === "signup" && <SignupScreen onSwitchToLogin={() => setMode("login")} />}
+          {mode === "forgot-password" && <ForgotPasswordScreen onSwitchToLogin={() => setMode("login")} />}
+          {mode === "login" && (
+            <LoginScreen onSwitchToSignup={() => setMode("signup")} onSwitchToForgotPassword={() => setMode("forgot-password")} />
+          )}
+        </>
       )}
-      <DownloadAndroidBanner />
-      <RootNavigator />
     </AppProvider>
   );
 }

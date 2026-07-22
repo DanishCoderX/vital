@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Platform, View, Text, ActivityIndicator } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import { useAuth } from "../lib/AuthContext";
 import { lightTheme } from "../theme";
@@ -57,6 +58,7 @@ function NotificationBridge() {
 export default function AuthGate() {
   const { user, loading, offline } = useAuth();
   const [mode, setMode] = useState<"login" | "signup" | "forgot-password">("signup");
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return (
@@ -67,16 +69,23 @@ export default function AuthGate() {
   }
 
   if (!user) {
-    if (mode === "signup") return <SignupScreen onSwitchToLogin={() => setMode("login")} />;
-    if (mode === "forgot-password") return <ForgotPasswordScreen onSwitchToLogin={() => setMode("login")} />;
-    return <LoginScreen onSwitchToSignup={() => setMode("signup")} onSwitchToForgotPassword={() => setMode("forgot-password")} />;
+    return (
+      <>
+        <DownloadAndroidBanner />
+        {mode === "signup" && <SignupScreen onSwitchToLogin={() => setMode("login")} />}
+        {mode === "forgot-password" && <ForgotPasswordScreen onSwitchToLogin={() => setMode("login")} />}
+        {mode === "login" && (
+          <LoginScreen onSwitchToSignup={() => setMode("signup")} onSwitchToForgotPassword={() => setMode("forgot-password")} />
+        )}
+      </>
+    );
   }
 
   return (
     <AppProvider>
       <NotificationBridge />
       {offline && (
-        <View style={{ backgroundColor: "#D9A441", paddingVertical: 6, alignItems: "center" }}>
+        <View style={{ backgroundColor: "#D9A441", paddingTop: insets.top + 6, paddingBottom: 6, alignItems: "center" }}>
           <Text style={{ color: "#1F2A2E", fontSize: 12, fontWeight: "600" }}>
             Offline — showing your last synced data
           </Text>

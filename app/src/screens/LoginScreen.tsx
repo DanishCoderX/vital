@@ -6,9 +6,10 @@ import GoogleSignInButton from "../components/GoogleSignInButton";
 
 interface LoginScreenProps {
   onSwitchToSignup: () => void;
+  onSwitchToForgotPassword: () => void;
 }
 
-export default function LoginScreen({ onSwitchToSignup }: LoginScreenProps) {
+export default function LoginScreen({ onSwitchToSignup, onSwitchToForgotPassword }: LoginScreenProps) {
   const { login, loginWithGoogleIdToken, error } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,6 +67,10 @@ export default function LoginScreen({ onSwitchToSignup }: LoginScreenProps) {
           style={[styles.input, { borderColor: theme.hairline, color: theme.ink }]}
         />
 
+        <TouchableOpacity onPress={onSwitchToForgotPassword} style={styles.forgotLink}>
+          <Text style={{ color: theme.aqua, fontSize: 13, fontWeight: "600" }}>Forgot password?</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={handleLogin}
           disabled={submitting || !email || !password}
@@ -105,4 +110,5 @@ const styles = StyleSheet.create({
   divider: { flex: 1, height: 1 },
   dividerText: { fontSize: 12 },
   switchLink: { marginTop: 20, alignItems: "center" },
+  forgotLink: { alignItems: "flex-end", marginBottom: 16, marginTop: -4 },
 });

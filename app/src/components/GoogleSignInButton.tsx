@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { lightTheme as theme } from "../theme";
@@ -47,13 +47,20 @@ export default function GoogleSignInButton({ onIdToken, label = "Continue with G
   }
 
   return (
-    <TouchableOpacity
-      disabled={!request}
-      onPress={() => promptAsync()}
-      style={[styles.button, { borderColor: theme.hairline }]}
-    >
-      <Text style={{ color: theme.ink, fontWeight: "600" }}>🔵 {label}</Text>
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        disabled={!request}
+        onPress={() => promptAsync()}
+        style={[styles.button, { borderColor: theme.hairline }]}
+      >
+        <Text style={{ color: theme.ink, fontWeight: "600" }}>🔵 {label}</Text>
+      </TouchableOpacity>
+      {Platform.OS !== "web" && request?.redirectUri && (
+        <Text style={styles.debugText} selectable>
+          Debug redirect URI: {request.redirectUri}
+        </Text>
+      )}
+    </>
   );
 }
 
@@ -63,5 +70,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
+  },
+  debugText: {
+    fontSize: 10,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 6,
   },
 });

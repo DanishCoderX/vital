@@ -61,10 +61,9 @@ export async function scheduleHydrationReminders(times: string[]): Promise<void>
         categoryIdentifier: HYDRATION_CATEGORY,
       },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        repeats: true,
       },
     });
   }

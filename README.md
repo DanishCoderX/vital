@@ -1,80 +1,132 @@
 # 💧 Vital — Fitness & Hydration Tracker
 
-A cross-platform fitness and hydration tracker — one Expo codebase for iOS, Android, and web — with real user accounts and automatic cross-device sync.
+A cross-platform fitness and hydration tracker — one Expo codebase for iOS, Android, and a real website — with user accounts, automatic cross-device sync, and native features that gracefully degrade to sensible web equivalents where the browser can't do what a phone can.
 
 Built for **InternGrow — App Development Track**, Task 3: *Advanced Fitness & Hydration Tracker*.
+
+![Expo](https://img.shields.io/badge/Expo-SDK_57-000020?logo=expo&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+## 🔗 Live
+
+- **Web app:** [vital-ivory-tau.vercel.app](https://vital-ivory-tau.vercel.app)
+- **API:** [vital-backend.bonto.run](https://vital-backend.bonto.run)
+- **Android:** downloadable APK linked from the web app's banner (built via EAS)
 
 ## Project structure
 
 ```
 vital/
 ├── app/        Expo (React Native + TypeScript) — the actual app, runs on iOS/Android/web
-└── backend/    Node/Express + MongoDB — auth + data sync API
+└── backend/    Node/Express + MongoDB — auth, sync, and password reset API
 ```
 
-## What's new: accounts + sync
+## Features
 
-Every user creates an account (email/password or Google) on first launch. Their weight is collected at sign-up. From then on, their data automatically syncs to their account — log in on any device and their workouts, hydration history, steps, and settings are all there.
+### Accounts & sync
+- Email/password signup and login, plus **Google Sign-In** (native + web)
+- **Forgot password** — emailed 6-digit reset code, no deep-linking complexity
+- **Change password** while logged in
+- **Delete account** — permanently removes the account and all synced data, with a confirmation step
+- Data automatically syncs across every device you log into
+- **Offline-resilient login** — reopening the app without a connection uses your last-known session instead of logging you out
+- Weight collected at sign-up, feeding directly into calorie accuracy
 
-- **Local-first:** every action still writes instantly to on-device storage, so the app feels the same as before — no waiting on network requests to see your own data
-- **Background sync:** changes push to the backend automatically (debounced ~1.5s after your last action) whenever you're signed in
-- **On login:** existing accounts pull their synced data down and it becomes the local copy; brand-new accounts start empty (pre-existing local data on a device is intentionally not imported into a new account)
+### Workouts
+- Full CRUD (add, edit, delete)
+- 8 workout types with auto-estimated calories (MET formula × your body weight, still manually editable)
+- Quick-log presets — save a workout as a one-tap shortcut
 
-## Setup — full walkthrough
+### Steps
+- **Native:** automatic tracking via the device's motion sensor (with a proper Activity Recognition permission request)
+- **Web:** manual entry / quick-increment buttons, since browsers have no step sensor
+
+### Hydration
+- Animated SVG progress ring
+- Quick-add buttons + custom amount
+- Daily history log
+- Custom daily goal
+
+### Reminders
+- **Native:** real scheduled notifications, fire even when the app's closed, with a "+250ml" quick-action button on the notification itself
+- **Web:** browser notifications while the tab's open — clearly labeled as a browser limitation, not hidden
+
+### Dashboard & insights
+- Today's calories, steps, hydration at a glance
+- Weekly/monthly chart toggle
+- Hydration streak tracker (current + longest)
+- Rest days — protect your streak without breaking it
+
+### Achievements
+- 6 auto-checked badges based on your real logged data
+
+### Personalization
+- Full light/dark theme with a genuinely distinct dark palette, not just inverted colors
+
+### Data portability
+- CSV export (all data types) and import (merges into existing data)
+- Share a weekly summary card as an image
+
+### Cross-platform by design
+- One codebase → iOS, Android, and a real website
+- Installable as a PWA on web
+- Downloadable Android APK linked from the web app
+
+## Honest platform notes
+
+A few things are called out explicitly in the UI rather than silently faked:
+- **Storage:** uses `AsyncStorage` instead of the brief's suggested SQLite/Room, since SQLite doesn't exist in a browser and this app genuinely needs to run on both.
+- **Step counting:** only real phones have a motion sensor — the web version says so and offers manual entry instead.
+- **Reminders:** web notifications require the tab to stay open — there's no background push without a server-side push subscription, which is out of scope here.
+
+## Tech Stack
+
+**Frontend:** Expo (SDK 57), React Native, TypeScript, React Navigation, `react-native-svg`, `expo-notifications`, `expo-sensors`, `expo-auth-session`, `expo-file-system` / `expo-sharing` / `expo-document-picker`, `react-native-view-shot` + `html2canvas`
+
+**Backend:** Node.js, Express, MongoDB (Mongoose), JWT auth, bcrypt, `google-auth-library`, Nodemailer (Gmail SMTP)
+
+**Persistence:** `AsyncStorage` (instant local reads/writes) with debounced background sync to the backend when signed in
+
+## Setup
 
 ### 1. MongoDB Atlas (free tier)
-1. Create a free cluster at [mongodb.com/atlas](https://mongodb.com/atlas)
-2. Under "Connect" → "Drivers", copy your connection string
-3. In `backend/.env` (copy from `.env.example`), set `MONGODB_URI` to that string
+Create a free cluster, get your connection string, and set it as `MONGODB_URI`.
 
-### 2. Google OAuth (for Google sign-in)
-1. Go to [Google Cloud Console](https://console.cloud.google.com) → create a project (or use an existing one)
-2. **APIs & Services → OAuth consent screen** → configure it (External, add your email as a test user while in testing mode)
-3. **APIs & Services → Credentials → Create Credentials → OAuth client ID** — you'll need to create **three** client IDs:
-   - **Web application** (used for the web build, and by the backend to verify tokens from any platform)
-   - **Android** (package name: `com.danishcoderx.vitaltracker` — matches `app.json`)
-   - **iOS** (bundle ID: same package name, adjust in `app.json` under `ios.bundleIdentifier` if needed)
-4. Copy the **Web client ID** into `backend/.env` as `GOOGLE_CLIENT_ID`
-5. Copy all three client IDs into `app/src/components/GoogleSignInButton.tsx`:
-   ```ts
-   const GOOGLE_WEB_CLIENT_ID = "...";
-   const GOOGLE_IOS_CLIENT_ID = "...";
-   const GOOGLE_ANDROID_CLIENT_ID = "...";
-   ```
+### 2. Google OAuth
+Create Web, Android, and iOS OAuth client IDs in Google Cloud Console. The Web client ID goes in the backend's `.env`; all three go into `app/src/components/GoogleSignInButton.tsx`. See `backend/README.md` for the full walkthrough, including the Android-specific custom URI scheme requirement.
 
-### 3. JWT secret
+### 3. Gmail SMTP (for password reset emails)
+Enable 2-Step Verification on a Gmail account, generate an App Password, and set `GMAIL_USER` / `GMAIL_APP_PASSWORD`. Without these, reset codes are logged to the server console instead of emailed — fine for local testing.
+
+### 4. JWT secret
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
-Paste the output into `backend/.env` as `JWT_SECRET`.
 
-### 4. Run the backend
+### 5. Run it
 ```bash
+# Terminal 1 — backend
 cd backend
+cp .env.example .env   # fill in the values above
 npm install
 npm run dev
-```
 
-### 5. Run the app
-```bash
+# Terminal 2 — app
 cd app
 npm install
 npm start
 ```
-Press `w` for web, or scan the QR code with **Expo Go** for native.
+Press `w` for web, or scan the QR code with **Expo Go** for native — completely free, no build required.
 
 ## Deployment
 
-- **Backend → Railway.** Root directory: `backend`. Environment variables: `MONGODB_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`.
-- **Web app → Netlify/Vercel.** Build command: `npm run build:web` (inside `app/`). Set `EXPO_PUBLIC_API_BASE_URL` to your Railway backend's URL + `/api`.
-- **Android APK** → see `app/README.md`'s EAS Build section for a free, directly-downloadable `.apk`.
-
-## Security notes
-
-- Passwords are hashed with `bcrypt` (cost factor 12), never stored or logged in plain text
-- Google ID tokens are verified server-side against Google's own servers before being trusted — the backend never just accepts a client's claimed identity
-- JWTs expire after 30 days
-- Data sync is whole-document, last-write-wins — fine for a single-user personal tracker, not designed for simultaneous multi-device editing of the same fields
+- **Backend** → any Node host (deployed here on Bonto; Railway also works). Set the same env vars as `.env.example`.
+- **Web app** → Vercel/Netlify. Build command: `npm run build:web` (inside `app/`). Set `EXPO_PUBLIC_API_BASE_URL` to your backend's URL + `/api`.
+- **Android APK** → `eas build --platform android --profile preview` (free tier, no Play Store needed). See `app/README.md` for the full walkthrough, including hosting the resulting `.apk` as a GitHub Release for a permanent download link.
 
 ## Author
 

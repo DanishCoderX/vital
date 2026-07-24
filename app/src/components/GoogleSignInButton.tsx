@@ -40,6 +40,15 @@ export default function GoogleSignInButton({ onIdToken, label = "Continue with G
     setSubmitting(true);
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+      // Clear any cached account selection first, so the chooser always
+      // appears — important since users may have multiple Google accounts.
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+        // no-op if there was nothing to sign out of
+      }
+
       const result = await GoogleSignin.signIn();
       const idToken = result.data?.idToken;
       if (!idToken) {

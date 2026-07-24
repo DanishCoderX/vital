@@ -49,25 +49,31 @@ export default function SettingsScreen() {
   }
 
   async function handleToggleReminders(value: boolean) {
-    if (value) {
-      const { granted, canAskAgain } = await requestNotificationPermission();
-      if (!granted) {
-        if (!canAskAgain) {
-          showAlert(
-            "Notifications blocked",
-            "You've previously denied notification permission. Enable it manually in your device's Settings → Apps → Vital → Notifications, then try the switch again."
-          );
-        } else {
-          showAlert("Permission needed", "Notifications permission is required to use reminders.");
+    try {
+      if (value) {
+        const { granted, canAskAgain } = await requestNotificationPermission();
+        if (!granted) {
+          if (!canAskAgain) {
+            showAlert(
+              "Notifications blocked",
+              "You've previously denied notification permission. Enable it manually in your device's Settings → Apps → Vital → Notifications, then try the switch again."
+            );
+          } else {
+            showAlert("Permission needed", "Notifications permission is required to use reminders.");
+          }
+          return; // leave the switch off — don't update settings.enabled since it never actually turned on
         }
-        return; // leave the switch off — don't update settings.enabled since it never actually turned on
+        await scheduleHydrationReminders(data!.settings.reminders.times);
+      } else {
+        await cancelAllReminders();
       }
-      await scheduleHydrationReminders(data!.settings.reminders.times);
-    } else {
-      await cancelAllReminders();
+      const next = await updateSettings(data!, { reminders: { ...data!.settings.reminders, enabled: value } });
+      refresh(next);
+    } catch (err) {
+      // Surfacing the real error instead of failing silently — this is temporary debug output,
+      // remove once the actual cause is found.
+      showAlert("Reminder toggle failed", err instanceof Error ? err.message : String(err));
     }
-    const next = await updateSettings(data!, { reminders: { ...data!.settings.reminders, enabled: value } });
-    refresh(next);
   }
 
   async function handleAddTime() {

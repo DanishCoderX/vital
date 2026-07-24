@@ -1,16 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
-import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
-import * as Google from "expo-auth-session/providers/google";
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 import { lightTheme as theme } from "../theme";
 import { showAlert } from "../lib/platformAlert";
 
-WebBrowser.maybeCompleteAuthSession();
-
+// This must be the WEB client ID (not Android/iOS) — GoogleSignin uses it as the
+// "server client ID" so the ID token it returns can be verified by our backend,
+// which already expects a token issued for GOOGLE_CLIENT_ID (the web client) in .env.
 const GOOGLE_WEB_CLIENT_ID = "1053961701519-cpbf5ch5epvaquqn9eqp0kuroeenigvo.apps.googleusercontent.com";
-const GOOGLE_IOS_CLIENT_ID = "1053961701519-lunu0002b1cnor4u6rc80g01g262gssa.apps.googleusercontent.com";
-const GOOGLE_ANDROID_CLIENT_ID = "1053961701519-qagmcqgp7oc627gmrpk9rpt453f2lbui.apps.googleusercontent.com";
+
+let configured = false;
+function ensureConfigured() {
+  if (configured) return;
+  GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    offlineAccess: false,
+  });
+  configured = true;
+}
 
 interface GoogleSignInButtonProps {
   onIdToken: (idToken: string) => void;
@@ -18,55 +25,50 @@ interface GoogleSignInButtonProps {
 }
 
 export default function GoogleSignInButton({ onIdToken, label = "Continue with Google" }: GoogleSignInButtonProps) {
-
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: "vital-tracker" });
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
-    {
-      webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
-      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-      androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-    },
-    { scheme: "vital-tracker" }
-  );
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (response?.type === "success" && response.params.id_token) {
-      onIdToken(response.params.id_token);
-    } else if (response?.type === "error") {
-      showAlert("Google sign-in failed", response.error?.message || "Please try again.");
+    if (Platform.OS !== "web") ensureConfigured();
+  }, []);
+
+  async function handlePress() {
+    if (Platform.OS === "web") {
+      showAlert("Not supported on web", "Google sign-in via this button requires the native Android/iOS app. Use email/password sign-in on web for now.");
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response]);
 
-  const configured = Boolean(GOOGLE_WEB_CLIENT_ID || GOOGLE_IOS_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID);
-
-  if (!configured) {
-    return (
-      <TouchableOpacity
-        onPress={() => showAlert("Not configured", "Google sign-in needs OAuth client IDs — see README.md.")}
-        style={[styles.button, { borderColor: theme.hairline, opacity: 0.5 }]}
-      >
-        <Text style={{ color: theme.inkSoft, fontWeight: "600" }}>{label} (not configured)</Text>
-      </TouchableOpacity>
-    );
+    setSubmitting(true);
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const result = await GoogleSignin.signIn();
+      const idToken = result.data?.idToken;
+      if (!idToken) {
+        throw new Error("No ID token returned from Google — check that webClientId is set correctly.");
+      }
+      onIdToken(idToken);
+    } catch (err: any) {
+      if (err?.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User closed the account picker — not an error, no alert needed.
+      } else if (err?.code === statusCodes.IN_PROGRESS) {
+        // A sign-in is already in flight — ignore the duplicate tap.
+      } else if (err?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        showAlert("Google Play Services required", "Please update Google Play Services and try again.");
+      } else {
+        showAlert("Google sign-in failed", err?.message || "Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <>
-      <TouchableOpacity
-        disabled={!request}
-        onPress={() => promptAsync()}
-        style={[styles.button, { borderColor: theme.hairline }]}
-      >
-        <Text style={{ color: theme.ink, fontWeight: "600" }}>🔵 {label}</Text>
-      </TouchableOpacity>
-      {Platform.OS !== "web" && (
-        <Text style={styles.debugText} selectable>
-          Debug redirect URI: {redirectUri}
-        </Text>
-      )}
-    </>
+    <TouchableOpacity
+      disabled={submitting}
+      onPress={handlePress}
+      style={[styles.button, { borderColor: theme.hairline, opacity: submitting ? 0.7 : 1 }]}
+    >
+      <Text style={{ color: theme.ink, fontWeight: "600" }}>🔵 {submitting ? "Signing in..." : label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -76,11 +78,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
-  },
-  debugText: {
-    fontSize: 10,
-    color: "#999",
-    textAlign: "center",
-    marginTop: 6,
   },
 });

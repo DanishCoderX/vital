@@ -38,7 +38,8 @@
           "color": "#2E9CCA"
         }
       ],
-      "expo-sensors"
+      "expo-sensors",
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {

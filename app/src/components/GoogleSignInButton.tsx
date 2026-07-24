@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import { lightTheme as theme } from "../theme";
 import { showAlert } from "../lib/platformAlert";
@@ -18,11 +19,16 @@ interface GoogleSignInButtonProps {
 
 export default function GoogleSignInButton({ onIdToken, label = "Continue with Google" }: GoogleSignInButtonProps) {
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-  });
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "vital-tracker" });
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
+    {
+      webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+      androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+    },
+    { scheme: "vital-tracker" }
+  );
 
   useEffect(() => {
     if (response?.type === "success" && response.params.id_token) {
@@ -55,9 +61,9 @@ export default function GoogleSignInButton({ onIdToken, label = "Continue with G
       >
         <Text style={{ color: theme.ink, fontWeight: "600" }}>🔵 {label}</Text>
       </TouchableOpacity>
-      {Platform.OS !== "web" && request?.redirectUri && (
+      {Platform.OS !== "web" && (
         <Text style={styles.debugText} selectable>
-          Debug redirect URI: {request.redirectUri}
+          Debug redirect URI: {redirectUri}
         </Text>
       )}
     </>
